@@ -33,7 +33,7 @@ app.post("/upload", (req, res) => {
           }
         }
       );
-      return 
+      return
     }
 
     file.mv(`${__dirname}/client/build/upload/${shortId}/${name}`, (err) => {
@@ -69,7 +69,7 @@ app.post("/uploadSlide", (req, res) => {
     file.mv(`${__dirname}/client/build/upload/${name}`, (err) => {
       if (err) {
         res.status(500).send(err);
-        return 
+        return
       }
       res.json({ message: "Success" });
     });
@@ -90,7 +90,6 @@ async function start() {
       useCreateIndex: true,
     });
   } catch (e) {
-    // console.log("Server error from node app.js", e.message);
     process.exit(1);
   }
 }
