@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
+client
 node_modules
 dist
 
@@ -28,7 +28,3 @@ dist-ssr
 yarn.lock
 build
 .editorconfig
-
-client/node_modules
-client/dist
-client/build
