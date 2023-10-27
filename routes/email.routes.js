@@ -1,24 +1,23 @@
-const { Router } = require('express');
-const router = Router();
-const nodemailer = require('nodemailer');
-
+const { Router } = require('express')
+const router = Router()
+const nodemailer = require('nodemailer')
 
 router.post('/emailContact', async (req, res) => {
-  const { email, message, location } = req.body;
+  const { email, message, location } = req.body
   if (!(email && message)) {
-    res.status(500).json({ message: 'wrong email or message' });
+    res.status(500).json({ message: 'wrong email or message' })
     return
   }
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     port: 465,
-    host: "smtp.gmail.com",
+    host: 'smtp.gmail.com',
     auth: {
       user: 'petrosianshoes@gmail.com',
       pass: 'pxfsqngcrrwfspuf'
     }
-  });
+  })
 
   const mailOptions = {
     from: `support@petrosianshoes.com`,
@@ -31,7 +30,7 @@ router.post('/emailContact', async (req, res) => {
               <p>location: ${location}</p>
               <p style="font-size: 22px">${message}</p>
             </div>`
-  };
+  }
 
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
@@ -39,7 +38,7 @@ router.post('/emailContact', async (req, res) => {
     } else {
       // console.log('Email sent: ' + info.response);
     }
-  });
-});
+  })
+})
 
-module.exports = router;
+module.exports = router
