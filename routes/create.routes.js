@@ -11,6 +11,7 @@ const Purchase = require('../models/Purchase')
 const nodemailer = require('nodemailer')
 const http = require('http')
 const NewPayment = require('../models/NewPayment')
+const { shippingKeyResponseTemplate } = require('../templates/shipping-key-response-template')
 const fetch = require('node-fetch')
 const mails = require('./mails')
 
@@ -84,7 +85,6 @@ router.post('/generate', auth, async (req, res) => {
     })
     await item.save()
     res.status(201).json({ item })
-    return
   } catch (e) {
     res.status(500).json({ message: e.message })
   }
@@ -206,8 +206,8 @@ router.post('/deletePurchase', auth, async (req, res) => {
 })
 router.post('/addShipmentKey', auth, async (req, res) => {
   try {
-    let { shortId, shk } = req.body
-    if (!shk) {
+    let { shortId, shippingKey, courierServiceName, courierServiceLink } = req.body
+    if (!shippingKey) {
       res.status(400).json({ message: 'Wrong shipping key' })
       return
     }
@@ -216,7 +216,7 @@ router.post('/addShipmentKey', auth, async (req, res) => {
       res.status(400).json({ message: 'Try again' })
       return
     }
-    it.shippingKey = shk
+    it.shippingKey = shippingKey
     await it.save()
 
     const transporter = nodemailer.createTransport({
@@ -233,19 +233,21 @@ router.post('/addShipmentKey', auth, async (req, res) => {
       from: `support@petrosianshoes.com`,
       to: `${it.email}`,
       subject: 'Your shipping tracking number is ready.',
-      text: `Hi dear ${it.fname}! Your shipping tracking number is ${shk}`,
-      html: `
-      <div style="font-size: 20px">
-        <p>Hi dear ${it.fname}! Your shipping tracking number is ${shk}!</p>
-      </div>
-        `
+      text: `Hi dear ${it.fname}! Your shipping tracking number is ${shippingKey}`,
+      html: shippingKeyResponseTemplate({
+        fname: it.fname,
+        lname: it.lname,
+        shippingKey,
+        courierServiceName,
+        courierServiceLink,
+      })
     }
 
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
-        // console.log(error);
+        // console.log(error)
       } else {
-        // console.log('Email sent: ' + info.response);
+        // console.log('Email sent: ' + info.response)
       }
     })
 
@@ -382,7 +384,7 @@ router.get('/clients', auth, async (req, res) => {
 router.get('/purchases', auth, async (req, res) => {
   try {
     const items = await Purchase.find({})
-    res.json(items)
+    return res.json(items)
   } catch (e) {
     res.status(500).json({ message: 'Something went wrong. Try again.' })
   }
@@ -572,8 +574,9 @@ router.get('/purchase/:id', auth, async (req, res) => {
     const item = await Purchase.findOne({ shortId: req.params.id })
     if (item) {
       res.json(item)
+      return
     }
-    res.json({ message: 'Not found' })
+    return res.json({ message: 'Not found' })
   } catch (e) {
     res.status(500).json({ message: 'Something went wrong. Try again.' })
   }
@@ -682,204 +685,6 @@ router.post('/savePurchase', async (req, res) => {
     })
     await item.save()
     res.status(201).json({ data: item })
-  } catch (e) {
-    res.status(500).json({ message: e.message })
-  }
-})
-
-router.post('/EmailMeGor', async (req, res) => {
-  try {
-    const { email, location } = req.body
-    if (!validator.validate(email)) {
-      res.json({ message: 'Enter valid email' })
-      return
-    }
-    let item = await Email.findOne({ email })
-    if (!item) {
-      item = new Email({ email, location, date: Date.now().toString(), counter: 0 })
-      await item.save()
-    }
-
-    let shortId = shortid.generate()
-    item = await Email.findOne({ shortId })
-    if (item) {
-      shortId = shortid.generate()
-    }
-    let { firstName, lastName, country, city, postal, region, address, purchase, PaymentID, OrderID } = req.body
-
-    item = new Purchase({
-      ...purchase,
-      shortId,
-      email,
-      location,
-      date: Date.now().toString(),
-      fname: firstName,
-      lname: lastName,
-      country,
-      city,
-      postalCode: postal,
-      address,
-      region,
-      isPayed: false,
-      shippingKey: '',
-      PaymentID,
-      OrderID
-    })
-    await item.save()
-
-    const arr = await NewPayment.find({ PaymentID })
-    item = arr[0]
-    PaymentID = item.PaymentID
-
-    const response = await fetch('https://services.ameriabank.am/VPOS/api/VPOS/GetPaymentDetails', {
-      method: 'post',
-      body: JSON.stringify({ PaymentID, Username, Password }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-
-    purchase = await Purchase.findOne({ OrderID })
-
-    const data = await response.json()
-    if (!item.alerted) {
-      let mailToClient = mails.paymentSuccessToClient
-      let mailToAdmin = mails.paymentSuccessToAdmin
-
-      mailtoClient = {
-        ...mailToClient,
-        attachments: [{
-          filename: 'logo.8cca1b05.png',
-          path: __dirname + '/client/build/static/media/logo.8cca1b05.png',
-          cid: 'logo'
-        }],
-      }
-
-      if (data.ResponseCode === '00') {
-        const payment = await Purchase.findOne({ PaymentID })
-        payment.isPayed = true
-        await payment.save()
-      } else {
-        mailToClient = mails.paymentFailureToClient
-        mailToAdmin = mails.paymentFailureToAdmin
-      }
-
-      mailToClient.to = item.email
-
-      const currency = purchase.country.includes('Armenia') ?
-        '֏' :
-        purchase.country.includes('Russia') ?
-          '₽' :
-          (purchase.country.includes('Germany') ||
-            purchase.country.includes('United') ||
-            purchase.country.includes('France') ||
-            purchase.country.includes('Italy') ||
-            purchase.country.includes('Spain') ||
-            purchase.country.includes('Ukraine') ||
-            purchase.country.includes('Poland') ||
-            purchase.country.includes('Romania') ||
-            purchase.country.includes('Netherlands') ||
-            purchase.country.includes('Belgium') ||
-            purchase.country.includes('Czech') ||
-            purchase.country.includes('Greece') ||
-            purchase.country.includes('Portugal') ||
-            purchase.country.includes('Sweden') ||
-            purchase.country.includes('Hungary') ||
-            purchase.country.includes('Belarus') ||
-            purchase.country.includes('Denmark') ||
-            purchase.country.includes('Finland') ||
-            purchase.country.includes('Norway')) ?
-            '€' :
-            '$'
-
-      const itemInCart = (shortIdImg, count, size, price) => (`<div style="border: 1px solid white; width: 260px; margin: auto; margin-bottom: 20px;">
-                                                                  <img src="cid:${shortIdImg}" width="250px" />
-                                                                  <p>Price: ${price} ${currency}</p>
-                                                                  <p>Size: ${size}</p>
-                                                                  ${count > 1 ? `<p>${count} pairs</p>` : ''}
-                                                              </div>`)
-
-      const itemsInCart = purchase.items.map(
-        (shortIdP, index) =>
-          itemInCart(shortIdP, purchase.quantities[index], purchase.sizes[index], purchase.prices[index]))
-        .join('')
-
-      mailToClient.html = `
-            <div style="font-size: 22px; margin: 20px auto; text-align: center;">
-            <div style="
-                padding: 30px 0;
-                box-shadow: 0 1px 5px #999;
-                background-color: rgba(247,247,247,.9);
-                width: 100%;">
-                <img src="cid:logo" alt="logo" style="width: 200px; height: 40px;">
-            </div>
-            <div style="background-color: rgba(51, 51, 51, 0.671); 
-            color: white;">
-                <p style="margin-top: 0; padding-top:20px">Hello ${purchase.fname} ${lastName},</p>
-                <p>Congratulations!</p>
-                <p>You made a purchase in <a style="color: white; text-decoration: none" href="https://petrosianshoes.com/"
-                        target="_blank">PetrosianShoes.com</a>.</p>
-                <p>We'll send your shipment tracking number as soon as possible.</p>
-                ${itemsInCart}
-                <p>
-                    Feel free to
-                    <a style="color: white; text-decoration: none" href="https://petrosianshoes.com/contact"
-                        target="_blank">contact us</a>
-                    at any time
-                </p>
-                <p style="font-size: 18px; margin-bottom: 0; padding-bottom: 20px;">Thanks for your interest in our company.
-                </p>
-            </div>
-        </div>`
-
-      mailToAdmin.html = `
-            <div style="font-size: 22px; margin: 20px auto; text-align: center;">
-            <div style="
-                padding: 30px 0;
-                box-shadow: 0 1px 5px #999;
-                background-color: rgba(247,247,247,.9);
-                width: 100%;">
-                <img src="cid:logo" alt="logo" style="width: 200px; height: 40px;">
-            </div>
-            <div style="background-color: rgba(51, 51, 51, 0.671); 
-            color: white;">
-                <p style="margin-top: 0; padding-top:20px">Hello ${purchase.fname} ${lastName},</p>
-                <p>Congratulations!</p>
-                <p>Someone made a purchase in <a style="color: white; text-decoration: none" href="https://petrosianshoes.com/"
-                        target="_blank">PetrosianShoes.com</a>.</p>
-                ${itemsInCart}
-                <p>
-                    Feel free to
-                    <a style="color: white; text-decoration: none" href="https://petrosianshoes.com/contact"
-                        target="_blank">contact us</a>
-                    at any time
-                </p>
-                <p style="font-size: 18px; margin-bottom: 0; padding-bottom: 20px;">Thanks for your interest in our company.
-                </p>
-            </div>
-        </div>`
-
-      attachments = [{
-        filename: 'logo.8cca1b05.png',
-        path: __dirname + '/client/build/static/media/logo.8cca1b05.png',
-        cid: 'logo'
-      },
-        ...purchase.items.map(
-          (shortIdP) => ({
-            filename: 'thumb.avatar.jpg',
-            path: `/client/build/upload/${shortIdP}/thumb.avatar.jpg`,
-            cid: shortIdP
-          }))
-      ]
-
-      mailToClient.attachments = attachments
-      mailToAdmin.attachments = attachments
-
-      mail(mailToClient)
-      mail(mailToAdmin)
-
-      item.alerted = true
-      await item.save()
-    }
-    res.status(201).json({ ...data })
   } catch (e) {
     res.status(500).json({ message: e.message })
   }
