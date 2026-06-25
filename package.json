@@ -11,7 +11,7 @@
     "client:build": "npm run build --prefix client",
     "dev": "cross-env NODE_ENV=development concurrently \"npm run server\" \"npm run client\""
   },
-  "author": "Gor Baghramyan <gorbaghramyan@outlook.com>",
+  "author": "Albert Barsegyan neolabsagency.com",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",

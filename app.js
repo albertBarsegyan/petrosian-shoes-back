@@ -90,6 +90,7 @@ async function start() {
       useCreateIndex: true,
     });
   } catch (e) {
+    console.error("MongoDB connection error:", e.message);
     process.exit(1);
   }
 }
