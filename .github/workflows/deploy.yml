@@ -33,11 +33,6 @@ jobs:
           strip_components: 0
           overwrite: true
           rm: false
-          exclude: |
-            .git
-            .github
-            node_modules
-            client
 
       - name: Install & Restart
         uses: appleboy/ssh-action@v1.2.0
