@@ -1,0 +1,55 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    environment: Production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 16
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Upload backend
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ec2-user
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "."
+          target: "/home/ec2-user/petrossian_shoes_fullstack"
+          strip_components: 0
+          overwrite: true
+          rm: false
+          exclude: |
+            .git
+            .github
+            node_modules
+            client
+
+      - name: Install & Restart
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ec2-user
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            cd /home/ec2-user/petrossian_shoes_fullstack
+
+            npm ci --omit=dev
+
+            pm2 restart app || pm2 start app.js --name app
+
+            pm2 save
