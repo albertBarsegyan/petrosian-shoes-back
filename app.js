@@ -96,4 +96,6 @@ async function start() {
 }
 
 start();
-app.listen(PORT, () => console.log(`app has been started on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`app has been started on port ${PORT}`);
+});
