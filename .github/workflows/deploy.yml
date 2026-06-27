@@ -19,8 +19,14 @@ jobs:
         with:
           node-version: 16
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Remove old .git on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ec2-user
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            rm -rf /home/ec2-user/petrossian_shoes_fullstack/.git
 
       - name: Upload backend
         uses: appleboy/scp-action@v0.1.7
@@ -28,18 +34,12 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ec2-user
           key: ${{ secrets.SERVER_SSH_KEY }}
-          source: |
-            .
-            !.git
-            !.github
-            !node_modules
-            !.gitignore
-            !README.md
+          source: "."
           target: "/home/ec2-user/petrossian_shoes_fullstack"
           overwrite: true
           rm: false
 
-      - name: Install & Restart
+      - name: Install dependencies & Restart
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.SERVER_HOST }}
