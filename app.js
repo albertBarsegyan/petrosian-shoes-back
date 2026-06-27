@@ -23,28 +23,22 @@ app.post("/upload", (req, res) => {
 
   const file = req.files.file;
   const [shortId, name] = file.name.split("___");
-  fs.stat(`${__dirname}/client/build/getLocation/${shortId}`, function (err) {
-    if (err !== null) {
-      fs.mkdir(
-        path.join(`${__dirname}/client/build/upload/`, shortId),
-        (err) => {
-          if (err) {
-            return false
-          }
-        }
-      );
-      return
+  const uploadDir = path.join(__dirname, "client", "build", "upload", shortId);
+
+  fs.mkdir(uploadDir, { recursive: true }, (err) => {
+    if (err) {
+      return res.status(500).send(err);
     }
 
-    file.mv(`${__dirname}/client/build/upload/${shortId}/${name}`, (err) => {
+    file.mv(path.join(uploadDir, name), (err) => {
       if (err) {
         console.error(err);
         return res.status(500).send(err);
       }
       if (name) {
-        sharp(`${__dirname}/client/build/upload/${shortId}/${name}`)
+        sharp(path.join(uploadDir, name))
           .resize({ height: 780 })
-          .toFile(`${__dirname}/client/build/upload/${shortId}/thumb.${name}`)
+          .toFile(path.join(uploadDir, `thumb.${name}`))
           .then(function (newFileInfo) {
             console.log(newFileInfo);
           })
