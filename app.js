@@ -79,6 +79,7 @@ const PORT = config.get("port") || 5000;
 async function start() {
   try {
     await mongoose.connect(config.get("mongoUri"), {
+      dbName: "appDb" ,
       useNewUrlParser: true,
       useUnifiedTopology: true,
       useCreateIndex: true,
